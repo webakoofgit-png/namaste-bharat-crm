@@ -36,23 +36,20 @@ npm --prefix backend test
 
 Backend integration tests clear only `backend/prisma/test.db`, a dedicated isolated test database. They never delete application data. Re-run the same workflow against a disposable MySQL database before release, especially concurrency, SQL uniqueness and deployment access boundaries.
 
-## Vercel Services
+## Vercel frontend
 
-Import the repository with Root Directory `./` and Application Preset `Services`.
-The root `vercel.json` builds the TanStack frontend with Nitro's Vercel preset
-and the Express backend with the canonical MySQL Prisma client. `/api` requests
-retain their prefix and route to the backend; other requests route to the frontend.
+Import only the `app` (TanStack Start) application, with Root Directory `./`.
+Select the TanStack Start application preset instead of Services. The root
+`vercel.json` installs only frontend dependencies and builds with Nitro's
+Vercel preset using `node scripts/build-vercel.mjs`.
 
-Set `DATABASE_URL` to a reachable MySQL database, `JWT_SECRET` to a random secret
-of at least 32 characters, `NODE_ENV=production`, and `APP_ORIGIN` to the exact
-HTTPS site origin. Apply database migrations and seed the first administrator
-against that database before using the CRM. Local SQLite files are not deployed.
-
-The current upload implementation uses local filesystem storage and requires
-durable storage before production file-upload workflows can run on Vercel.
-`UPLOAD_DIR=/tmp/namaste-bharat-uploads` can support temporary checks only; files
-there do not persist across function instances or deployments. Use the VPS
-deployment below for the existing persistent filesystem implementation.
+This deploys the frontend without the Express backend. The login page renders,
+but login and CRM data workflows require a separately running backend. If one
+is available, set `VITE_API_URL=https://your-api-host/api` before building and
+configure that backend's `APP_ORIGIN` for the frontend HTTPS origin. A separate
+backend hostname also requires compatible cookie and CSRF handling; the current
+same-origin session setup is best served through a same-origin API proxy.
+Do not add backend `DATABASE_URL` or `JWT_SECRET` to frontend variables.
 
 ## Ubuntu / Hostinger VPS
 
