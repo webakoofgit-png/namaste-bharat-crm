@@ -44,8 +44,11 @@ function AuthForm({ onLogin }: { onLogin: (user: User) => void }) {
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [recoveryMessage, setRecoveryMessage] = useState("");
   useEffect(() => {
     form.reset();
+    setError("");
+    setRecoveryMessage("");
   }, [mode, role, form.reset]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,6 +57,12 @@ function AuthForm({ onLogin }: { onLogin: (user: User) => void }) {
     const values = Object.fromEntries(new FormData(event.currentTarget));
     try {
       if (!(await form.trigger())) throw new Error("Complete all required fields.");
+      if (mode === "reset" && values["password"] !== values["confirmPassword"])
+        throw new Error("Passwords do not match.");
+      if (import.meta.env["VITE_FRONTEND_ONLY"] === "true")
+        throw new Error(
+          "Account services are not connected yet. Please contact support for account access or password recovery.",
+        );
       if (mode === "login" || mode === "register") {
         const parsed = (
           mode === "login"
@@ -82,8 +91,9 @@ function AuthForm({ onLogin }: { onLogin: (user: User) => void }) {
       } else if (mode === "forgot") {
         const result = await api<{ message: string }>("/auth/forgot-password", {
           method: "POST",
-          body: JSON.stringify(values),
+          body: JSON.stringify({ email: String(values["email"]).trim().toLowerCase() }),
         });
+        setRecoveryMessage(result.message);
         toast.success(result.message);
       } else {
         await api("/auth/reset-password", {
@@ -203,6 +213,15 @@ function AuthForm({ onLogin }: { onLogin: (user: User) => void }) {
                 placeholder={mode === "login" ? "Enter your password" : "At least 10 characters"}
               />
             )}
+            {mode === "reset" && (
+              <Field
+                label="Confirm new password"
+                name="confirmPassword"
+                type="password"
+                minLength={10}
+              />
+            )}
+            {recoveryMessage && <p role="status">{recoveryMessage}</p>}
             {error && (
               <div role="alert" className="form-error">
                 {error}
@@ -233,13 +252,12 @@ function AuthForm({ onLogin }: { onLogin: (user: User) => void }) {
               <ArrowRight size={17} />
             </button>
           </form>
-          {mode === "login" ? (
+          {mode === "login" && role !== "ADMIN" ? (
             <p className="auth-switch">
               New here?{" "}
               <button
                 className="text-link"
                 onClick={() => {
-                  setRole("CUSTOMER");
                   setMode("register");
                   setError("");
                 }}
@@ -247,7 +265,7 @@ function AuthForm({ onLogin }: { onLogin: (user: User) => void }) {
                 Create an account
               </button>
             </p>
-          ) : (
+          ) : mode !== "login" ? (
             <button
               className="text-link auth-switch"
               onClick={() => {
@@ -257,7 +275,7 @@ function AuthForm({ onLogin }: { onLogin: (user: User) => void }) {
             >
               <ChevronLeft size={15} /> Back to sign in
             </button>
-          )}
+          ) : null}
           <div className="secure-note">
             <ShieldCheck size={15} /> Your information is protected with secure sessions.
           </div>

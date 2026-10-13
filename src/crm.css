@@ -2083,3 +2083,24 @@ td small {
     display: none;
   }
 }
+.password-input {
+  position: relative;
+}
+.password-input input {
+  padding-right: 46px;
+}
+.password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: #555;
+  cursor: pointer;
+}

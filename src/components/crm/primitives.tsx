@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { X, Inbox, LoaderCircle } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { X, Inbox, LoaderCircle, Eye, EyeOff } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -112,17 +112,31 @@ export function Field({
   minLength?: number | undefined;
 }) {
   const form = useFormContext();
+  const [showPassword, setShowPassword] = useState(false);
   return (
     <label className="field">
       <span>{label}</span>
-      <input
-        type={type}
-        required={required}
-        defaultValue={value}
-        placeholder={placeholder}
-        minLength={minLength}
-        {...(form ? form.register(name, { required }) : { name })}
-      />
+      <div className={type === "password" ? "password-input" : undefined}>
+        <input
+          type={type === "password" && showPassword ? "text" : type}
+          required={required}
+          defaultValue={value}
+          placeholder={placeholder}
+          minLength={minLength}
+          {...(form ? form.register(name, { required }) : { name })}
+        />
+        {type === "password" && (
+          <button
+            type="button"
+            className="password-toggle"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-pressed={showPassword}
+            onClick={() => setShowPassword((shown) => !shown)}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        )}
+      </div>
     </label>
   );
 }
