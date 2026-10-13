@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.output/
+.tanstack/
+.env
+.env.*
+!.env.example
+backend/prisma/schema.local.prisma
+backend/prisma/*.db*
+backend/uploads/
+backend/test-uploads/
+backend/browser-test-uploads/
+.wrangler/
+test-results/
+playwright-report/
+*.log
+local-access.txt

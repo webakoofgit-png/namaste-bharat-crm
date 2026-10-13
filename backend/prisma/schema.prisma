@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "mysql"
+  url = env("DATABASE_URL")
+}
+
+model User {
+  id Int @id @default(autoincrement())
+  email String @unique
+  mobile String @unique
+  name String
+  passwordHash String
+  role String
+  active Boolean @default(true)
+  sessionVersion Int @default(0)
+  address String @default("") @db.Text
+  city String @default("")
+  pinCode String @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  customer Customer?
+  vendor Vendor?
+  notifications Notification[]
+  audits AuditLog[]
+  resets PasswordReset[]
+  settings CashbackSetting[]
+  payments CashbackPayment[]
+  @@index([role, active])
+}
+model Customer {
+  id Int @id @default(autoincrement())
+  userId Int @unique
+  user User @relation(fields:[userId], references:[id])
+  reference String? @unique
+  cardToken String @unique
+  visits Visit[]
+  transactions Transaction[]
+}
+model Vendor {
+  id Int @id @default(autoincrement())
+  userId Int @unique
+  user User @relation(fields:[userId], references:[id])
+  businessName String
+  category String
+  whatsapp String @default("")
+  approval String @default("PENDING")
+  visits Visit[]
+  transactions Transaction[]
+  media Document[]
+  @@index([approval, category])
+}
+model Visit {
+  id Int @id @default(autoincrement())
+  customerId Int
+  customer Customer @relation(fields:[customerId], references:[id])
+  vendorId Int
+  vendor Vendor @relation(fields:[vendorId], references:[id])
+  method String
+  status String @default("PENDING")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  confirmedAt DateTime?
+  dedupKey String @unique
+  transaction Transaction?
+  @@index([customerId, createdAt])
+  @@index([vendorId, createdAt])
+}
+model Transaction {
+  id Int @id @default(autoincrement())
+  customerId Int
+  customer Customer @relation(fields:[customerId], references:[id])
+  vendorId Int
+  vendor Vendor @relation(fields:[vendorId], references:[id])
+  visitId Int? @unique
+  visit Visit? @relation(fields:[visitId], references:[id])
+  amountPaise Int
+  rateBps Int
+  billNumber String
+  billDate DateTime
+  notes String @default("") @db.Text
+  status String @default("PENDING")
+  disputeReason String @default("") @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cashback Cashback?
+  documents Document[]
+  @@unique([vendorId, billNumber])
+  @@index([customerId, status, createdAt])
+  @@index([vendorId, status, createdAt])
+}
+model Cashback {
+  id Int @id @default(autoincrement())
+  transactionId Int @unique
+  transaction Transaction @relation(fields:[transactionId], references:[id])
+  amountPaise Int
+  status String @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  payment CashbackPayment?
+  @@index([status])
+}
+model CashbackPayment {
+  id Int @id @default(autoincrement())
+  cashbackId Int @unique
+  cashback Cashback @relation(fields:[cashbackId], references:[id])
+  recordedById Int
+  recordedBy User @relation(fields:[recordedById], references:[id])
+  paymentDate DateTime
+  method String
+  reference String
+  remarks String @db.Text
+  createdAt DateTime @default(now())
+}
+model CashbackSetting {
+  id Int @id @default(autoincrement())
+  rateBps Int
+  updatedById Int?
+  updatedBy User? @relation(fields:[updatedById], references:[id])
+  createdAt DateTime @default(now())
+}
+model Notification {
+  id Int @id @default(autoincrement())
+  userId Int
+  user User @relation(fields:[userId], references:[id])
+  title String
+  message String @db.Text
+  read Boolean @default(false)
+  createdAt DateTime @default(now())
+  @@index([userId, read, createdAt])
+}
+model AuditLog {
+  id Int @id @default(autoincrement())
+  userId Int?
+  user User? @relation(fields:[userId], references:[id])
+  action String
+  entity String
+  entityId Int?
+  detail String @db.Text
+  createdAt DateTime @default(now())
+  @@index([createdAt])
+}
+model PasswordReset {
+  id Int @id @default(autoincrement())
+  userId Int
+  user User @relation(fields:[userId], references:[id])
+  tokenHash String @unique
+  expiresAt DateTime
+  used Boolean @default(false)
+}
+model Document {
+  id Int @id @default(autoincrement())
+  transactionId Int?
+  transaction Transaction? @relation(fields:[transactionId], references:[id])
+  vendorId Int?
+  vendor Vendor? @relation(fields:[vendorId], references:[id])
+  kind String @default("BILL")
+  storageName String @unique
+  originalName String
+  mime String
+  size Int
+  createdAt DateTime @default(now())
+}
