@@ -20,7 +20,7 @@ describe("Account access", () => {
   it("offers registration for vendors and customers, but not administrators", () => {
     render(<Auth onLogin={vi.fn()} />);
     expect(screen.queryByText("Create an account")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Vendor", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Vendor" }));
     fireEvent.click(screen.getByText("Create an account"));
     expect(screen.getByLabelText("Business name")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Super Admin" })).toBeNull();
