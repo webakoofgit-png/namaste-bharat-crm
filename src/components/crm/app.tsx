@@ -100,9 +100,11 @@ const descriptions: Record<string, string> = {
   profile: "Your account and contact information.",
 };
 export function CRMApp() {
+  const frontendOnly = import.meta.env["VITE_FRONTEND_ONLY"] === "true";
   const client = useQueryClient();
   const session = useQuery({
     queryKey: ["session"],
+    enabled: !frontendOnly,
     queryFn: async () => {
       try {
         const data = await api<{ user: User; csrf: string }>("/auth/me");
@@ -124,7 +126,9 @@ export function CRMApp() {
   return (
     <>
       <Toaster richColors position="top-right" />
-      {session.isPending ? (
+      {frontendOnly ? (
+        <Auth onLogin={onLogin} />
+      ) : session.isPending ? (
         <Loading />
       ) : session.error ? (
         <div className="connection-error">
