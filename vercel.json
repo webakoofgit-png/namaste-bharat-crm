@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "app": {
+      "root": ".",
+      "installCommand": "npm ci",
+      "buildCommand": "node scripts/build-vercel.mjs"
+    },
+    "backend": {
+      "root": "backend",
+      "framework": "express",
+      "entrypoint": "src/app.ts",
+      "installCommand": "npm ci",
+      "buildCommand": "npm run db:generate && npm run build"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": { "service": "backend" } },
+    { "source": "/:path*", "destination": { "service": "app" } }
+  ]
+}

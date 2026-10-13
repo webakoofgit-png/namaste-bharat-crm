@@ -36,6 +36,24 @@ npm --prefix backend test
 
 Backend integration tests clear only `backend/prisma/test.db`, a dedicated isolated test database. They never delete application data. Re-run the same workflow against a disposable MySQL database before release, especially concurrency, SQL uniqueness and deployment access boundaries.
 
+## Vercel Services
+
+Import the repository with Root Directory `./` and Application Preset `Services`.
+The root `vercel.json` builds the TanStack frontend with Nitro's Vercel preset
+and the Express backend with the canonical MySQL Prisma client. `/api` requests
+retain their prefix and route to the backend; other requests route to the frontend.
+
+Set `DATABASE_URL` to a reachable MySQL database, `JWT_SECRET` to a random secret
+of at least 32 characters, `NODE_ENV=production`, and `APP_ORIGIN` to the exact
+HTTPS site origin. Apply database migrations and seed the first administrator
+against that database before using the CRM. Local SQLite files are not deployed.
+
+The current upload implementation uses local filesystem storage and requires
+durable storage before production file-upload workflows can run on Vercel.
+`UPLOAD_DIR=/tmp/namaste-bharat-uploads` can support temporary checks only; files
+there do not persist across function instances or deployments. Use the VPS
+deployment below for the existing persistent filesystem implementation.
+
 ## Ubuntu / Hostinger VPS
 
 1. Provision a separate VPS; create a non-root deployment user; install Node 22.13+, MySQL 8, Nginx, PM2, certbot and firewall rules. Restrict SSH, allow ports 80/443, and do not expose MySQL or Node ports.

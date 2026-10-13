@@ -11,6 +11,7 @@ backend/uploads/
 backend/test-uploads/
 backend/browser-test-uploads/
 .wrangler/
+.vercel/
 test-results/
 playwright-report/
 *.log

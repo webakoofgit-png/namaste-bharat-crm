@@ -32,6 +32,7 @@ const cookie = {
 };
 const uploads = path.resolve(process.env.UPLOAD_DIR || "./uploads");
 export const app = express();
+export default app;
 app.disable("x-powered-by");
 if (production) app.set("trust proxy", 1);
 app.use(helmet());
