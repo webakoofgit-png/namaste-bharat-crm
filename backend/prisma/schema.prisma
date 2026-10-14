@@ -27,7 +27,15 @@ model User {
   resets PasswordReset[]
   settings CashbackSetting[]
   payments CashbackPayment[]
+  websiteIdentity WebsiteIdentity?
   @@index([role, active])
+}
+model WebsiteIdentity {
+  id Int @id @default(autoincrement())
+  subject String @unique @db.VarChar(190)
+  userId Int @unique
+  user User @relation(fields:[userId], references:[id])
+  createdAt DateTime @default(now())
 }
 model Customer {
   id Int @id @default(autoincrement())

@@ -36,6 +36,7 @@ export function Auth({ onLogin }: { onLogin: (user: User) => void }) {
 }
 function AuthForm({ onLogin }: { onLogin: (user: User) => void }) {
   const form = useFormContext();
+  const websiteAuth = import.meta.env["VITE_WEBSITE_AUTH_ENABLED"] === "true";
   const [role, setRole] = useState<Role>("ADMIN");
   const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">(() =>
     typeof window !== "undefined" && new URLSearchParams(window.location.search).has("reset")
@@ -161,7 +162,7 @@ function AuthForm({ onLogin }: { onLogin: (user: User) => void }) {
           {["login", "register"].includes(mode) && (
             <div className="portal-tabs">
               {(["ADMIN", "VENDOR", "CUSTOMER"] as Role[])
-                .filter((r) => mode !== "register" || r !== "ADMIN")
+                .filter((r) => (websiteAuth ? r === "ADMIN" : mode !== "register" || r !== "ADMIN"))
                 .map((r) => (
                   <button
                     type="button"
@@ -175,6 +176,35 @@ function AuthForm({ onLogin }: { onLogin: (user: User) => void }) {
                     {r === "ADMIN" ? "Super Admin" : r === "VENDOR" ? "Vendor" : "Customer"}
                   </button>
                 ))}
+            </div>
+          )}
+          {websiteAuth && mode === "login" && (
+            <div className="auth-switch">
+              <p>Vendors and customers sign in through the Namaste Bharat website.</p>
+              <button
+                type="button"
+                className="btn secondary full"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setError("");
+                  try {
+                    if (import.meta.env["VITE_FRONTEND_ONLY"] === "true")
+                      throw new Error(
+                        "Website sign-in will be available once account services are connected.",
+                      );
+                    const result = await api<{ url: string }>("/auth/website-start", {
+                      method: "POST",
+                    });
+                    window.location.assign(result.url);
+                  } catch (err) {
+                    setError((err as Error).message);
+                    setBusy(false);
+                  }
+                }}
+              >
+                Continue with website
+              </button>
             </div>
           )}
           <form onSubmit={submit} key={`${mode}-${role}`}>

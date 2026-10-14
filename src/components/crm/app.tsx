@@ -106,6 +106,26 @@ export function CRMApp() {
     queryKey: ["session"],
     enabled: !frontendOnly,
     queryFn: async () => {
+      const params = new URLSearchParams(
+        typeof window === "undefined" ? "" : window.location.search,
+      );
+      const websiteCode = params.get("website_code");
+      if (websiteCode) {
+        const state = params.get("website_state");
+        params.delete("website_code");
+        params.delete("website_state");
+        window.history.replaceState(
+          {},
+          "",
+          `${window.location.pathname}${params.size ? `?${params}` : ""}`,
+        );
+        const result = await api<{ user: User; csrf: string }>("/auth/website-exchange", {
+          method: "POST",
+          body: JSON.stringify({ code: websiteCode, state }),
+        });
+        setCsrf(result.csrf);
+        return result.user;
+      }
       try {
         const data = await api<{ user: User; csrf: string }>("/auth/me");
         setCsrf(data.csrf);
@@ -134,10 +154,16 @@ export function CRMApp() {
         <div className="connection-error">
           <Brand />
           <ErrorState message={session.error.message} retry={() => void session.refetch()} />
-          <p>
-            Start the backend with <code>npm --prefix backend run dev</code> and check your database
-            configuration.
-          </p>
+          <p>Please contact support if this continues.</p>
+          <button
+            className="btn secondary"
+            onClick={() => {
+              setCsrf("");
+              client.setQueryData(["session"], null);
+            }}
+          >
+            Back to sign in
+          </button>
         </div>
       ) : session.data ? (
         <Workspace

@@ -14,6 +14,7 @@ import { z } from "zod";
 import { Prisma, type User } from "@prisma/client";
 import { db } from "./db.js";
 import { AppError, moneyToPaise, cashbackPaise, assertTransition } from "./domain.js";
+import { websiteAuthEnabled, exchangeWebsiteCode } from "./website-auth.js";
 
 const secret = process.env.JWT_SECRET;
 if (!secret || secret.length < 32)
@@ -203,9 +204,61 @@ app.get("/api/health", async (_req, res) => {
   await db.$queryRaw`SELECT 1`;
   send(res, { status: "ok", database: "connected" });
 });
-app.post("/api/auth/register", authLimit, async (req, res) =>
-  send(res, await registerAccount(registerSchema.parse(req.body)), 201),
-);
+app.post("/api/auth/register", authLimit, async (req, res) => {
+  if (websiteAuthEnabled)
+    throw new AppError(403, "Create your account on the Namaste Bharat website.");
+  send(res, await registerAccount(registerSchema.parse(req.body)), 201);
+});
+app.post("/api/auth/website-start", authLimit, async (_req, res) => {
+  if (!websiteAuthEnabled) throw new AppError(404, "Website sign-in is not enabled.");
+  const loginUrl = process.env.WEBSITE_LOGIN_URL;
+  const clientId = process.env.WEBSITE_AUTH_CLIENT_ID;
+  if (!loginUrl || !clientId) throw new AppError(503, "Website sign-in is not configured.");
+  const url = new URL(loginUrl);
+  if (
+    url.protocol !== "https:" &&
+    !(
+      process.env.NODE_ENV !== "production" &&
+      url.protocol === "http:" &&
+      ["localhost", "127.0.0.1"].includes(url.hostname)
+    )
+  )
+    throw new AppError(503, "Website sign-in requires HTTPS.");
+  const state = randomBytes(32).toString("hex");
+  res.cookie("website_login_state", state, { ...cookie, maxAge: 5 * 60 * 1000 });
+  url.searchParams.set("state", state);
+  url.searchParams.set("clientId", clientId);
+  url.searchParams.set("redirectUri", `${origins[0]}/`);
+  send(res, { url: url.toString() });
+});
+app.post("/api/auth/website-exchange", authLimit, async (req, res) => {
+  const { code, state } = z
+    .object({
+      code: z.string().min(32).max(512),
+      state: z.string().regex(/^[a-f0-9]{64}$/),
+    })
+    .parse(req.body);
+  if (!req.cookies.website_login_state || state !== req.cookies.website_login_state)
+    throw new AppError(401, "Website sign-in verification failed. Start sign-in again from CRM.");
+  res.clearCookie("website_login_state", cookie);
+  const identity = await exchangeWebsiteCode(code, state, `${origins[0]}/`);
+  const link = await db.websiteIdentity.findUnique({
+    where: { subject: identity.subject },
+    include: { user: { include: { vendor: true, customer: true } } },
+  });
+  const user = link?.user;
+  if (!user || !user.active || user.role !== identity.role)
+    throw new AppError(
+      403,
+      "Your website account is not linked to an active CRM profile. Contact support.",
+    );
+  if (user.role === "VENDOR" && user.vendor?.approval !== "APPROVED")
+    throw new AppError(403, "Your business is awaiting administrator approval.");
+  if (user.role === "CUSTOMER" && !user.customer)
+    throw new AppError(403, "Your customer profile is not ready. Contact support.");
+  await audit(db, user.id, "WEBSITE_LOGIN", "auth", user.id);
+  send(res, { user: safeUser(user), csrf: startSession(res, user) });
+});
 app.post("/api/auth/login", authLimit, async (req, res) => {
   const data = z
     .object({
@@ -214,6 +267,8 @@ app.post("/api/auth/login", authLimit, async (req, res) => {
       role: z.enum(["ADMIN", "VENDOR", "CUSTOMER"]),
     })
     .parse(req.body);
+  if (websiteAuthEnabled && data.role !== "ADMIN")
+    throw new AppError(403, "Vendor and Customer sign-in is handled on the website.");
   const user = await db.user.findUnique({
     where: { email: data.email.toLowerCase().trim() },
     include: { vendor: true },
@@ -243,7 +298,7 @@ app.post("/api/auth/login", authLimit, async (req, res) => {
 app.post("/api/auth/forgot-password", authLimit, async (req, res) => {
   const email = z.string().email().parse(req.body.email).toLowerCase();
   const user = await db.user.findUnique({ where: { email } });
-  if (user)
+  if (user && (!websiteAuthEnabled || user.role === "ADMIN"))
     await atomic(async (tx) => {
       await notifyAdmins(
         tx,
@@ -268,6 +323,10 @@ app.post("/api/auth/reset-password", authLimit, async (req, res) => {
     });
     if (!reset || reset.used || reset.expiresAt < new Date())
       throw new AppError(400, "This reset link is invalid or expired.");
+    if (websiteAuthEnabled) {
+      const account = await tx.user.findUnique({ where: { id: reset.userId } });
+      if (account?.role !== "ADMIN") throw new AppError(403, "Reset your password on the website.");
+    }
     const changed = await tx.passwordReset.updateMany({
       where: { id: reset.id, used: false },
       data: { used: true },
@@ -285,6 +344,26 @@ app.post("/api/auth/reset-password", authLimit, async (req, res) => {
   send(res, { message: "Password updated. Sign in with your new password." });
 });
 app.use("/api", authenticate);
+app.get("/api/admin/users/:id/website-identity", roles("ADMIN"), async (req, res) => {
+  const identity = await db.websiteIdentity.findUnique({
+    where: { userId: id(req.params.id) },
+    select: { subject: true },
+  });
+  send(res, identity);
+});
+app.post("/api/admin/users/:id/website-identity", roles("ADMIN"), async (req, res) => {
+  const userId = id(req.params.id);
+  const { subject } = z.object({ subject: z.string().trim().min(1).max(190) }).parse(req.body);
+  await atomic(async (tx) => {
+    const user = await tx.user.findUnique({ where: { id: userId } });
+    if (!user || !["VENDOR", "CUSTOMER"].includes(user.role))
+      throw new AppError(400, "Only Vendor and Customer accounts can be linked.");
+    // Unique keys reject reassignment and accidental merges; never match by email.
+    await tx.websiteIdentity.create({ data: { subject, userId } });
+    await audit(tx, actor(req).id, "LINK_WEBSITE_IDENTITY", "user", userId);
+  });
+  send(res, { message: "Website account linked." }, 201);
+});
 app.get("/api/auth/me", (req, res) =>
   send(res, { user: safeUser(actor(req)), csrf: req.cookies.csrf }),
 );

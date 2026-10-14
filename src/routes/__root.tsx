@@ -78,6 +78,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "referrer", content: "no-referrer" },
       { title: "Namaste Bharat 24 — CRM" },
       { name: "description", content: "Customer, vendor and cashback management for Namaste Bharat 24." },
       { name: "author", content: "Lovable" },

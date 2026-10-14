@@ -18,6 +18,7 @@ const env = {
   JWT_SECRET: randomBytes(48).toString("hex"),
   APP_ORIGIN: "http://localhost:3000",
   NODE_ENV: "test",
+  WEBSITE_AUTH_ENABLED: "false",
   UPLOAD_DIR: "./test-uploads",
 };
 execFileSync(
@@ -31,6 +32,11 @@ execFileSync(
     "--skip-generate",
   ],
   { env, stdio: "inherit" },
+);
+execFileSync(
+  process.execPath,
+  ["node_modules/tsx/dist/cli.mjs", "--test", "src/website-auth.test.ts"],
+  { env: { ...env, WEBSITE_AUTH_ENABLED: "true" }, stdio: "inherit" },
 );
 execFileSync(
   process.execPath,

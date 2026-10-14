@@ -8,6 +8,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn() } }));
 
 beforeEach(() => {
   vi.stubEnv("VITE_FRONTEND_ONLY", "false");
+  vi.stubEnv("VITE_WEBSITE_AUTH_ENABLED", "false");
   vi.mocked(api).mockReset();
   window.history.replaceState({}, "", "/");
 });
@@ -17,6 +18,15 @@ afterEach(() => {
 });
 
 describe("Account access", () => {
+  it("uses website sign-in for vendors and customers in integrated mode", () => {
+    vi.stubEnv("VITE_WEBSITE_AUTH_ENABLED", "true");
+    render(<Auth onLogin={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Super Admin" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Vendor" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Customer" })).toBeNull();
+    expect(screen.queryByText("Create an account")).toBeNull();
+    expect(screen.getByRole("button", { name: "Continue with website" })).toBeInTheDocument();
+  });
   it("offers registration for vendors and customers, but not administrators", () => {
     render(<Auth onLogin={vi.fn()} />);
     expect(screen.queryByText("Create an account")).toBeNull();

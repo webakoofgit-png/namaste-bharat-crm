@@ -375,31 +375,97 @@ export function Accounts({ kind }: { kind: "CUSTOMER" | "VENDOR" }) {
             >
               {view.active ? "Deactivate" : "Activate"}
             </button>
-            <button
-              className="btn secondary"
-              onClick={async () => {
-                try {
-                  const result = await api<{ url: string }>(
-                    "/admin/users/" + view.id + "/reset-link",
-                    { method: "POST", body: "{}" },
-                  );
-                  await navigator.clipboard.writeText(result.url);
-                  toast.success(
-                    "Reset link copied. Share only after verifying identity. Expires in 30 minutes.",
-                  );
-                } catch (e) {
-                  toast.error((e as Error).message);
-                }
-              }}
-            >
-              Issue reset link
-            </button>
+            {import.meta.env["VITE_WEBSITE_AUTH_ENABLED"] !== "true" && (
+              <button
+                className="btn secondary"
+                onClick={async () => {
+                  try {
+                    const result = await api<{ url: string }>(
+                      "/admin/users/" + view.id + "/reset-link",
+                      { method: "POST", body: "{}" },
+                    );
+                    await navigator.clipboard.writeText(result.url);
+                    toast.success(
+                      "Reset link copied. Share only after verifying identity. Expires in 30 minutes.",
+                    );
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
+                }}
+              >
+                Issue reset link
+              </button>
+            )}
           </div>
+          {import.meta.env["VITE_WEBSITE_AUTH_ENABLED"] === "true" && (
+            <WebsiteAccountLink user={view} />
+          )}
           {view.vendor && <VendorMedia vendorId={view.vendor.id} media={view.vendor.media || []} />}
           <AccountHistory user={view} />
         </Modal>
       )}
     </>
+  );
+}
+function WebsiteAccountLink({ user }: { user: User }) {
+  const [subject, setSubject] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const client = useQueryClient();
+  const query = useQuery({
+    queryKey: ["website-identity", user.id],
+    queryFn: () => api<{ subject: string } | null>(`/admin/users/${user.id}/website-identity`),
+  });
+  if (query.isPending) return <Loading />;
+  if (query.error)
+    return <ErrorState message={query.error.message} retry={() => void query.refetch()} />;
+  if (query.data)
+    return (
+      <p>
+        Linked website user ID: <strong>{query.data.subject}</strong>
+      </p>
+    );
+  return (
+    <form
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setBusy(true);
+        try {
+          await api(`/admin/users/${user.id}/website-identity`, {
+            method: "POST",
+            body: JSON.stringify({ subject: subject.trim() }),
+          });
+          await client.invalidateQueries({ queryKey: ["website-identity", user.id] });
+          toast.success("Website account linked.");
+        } catch (error) {
+          toast.error((error as Error).message);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <h3>Connect website account</h3>
+      <label className="field">
+        Website user ID
+        <input
+          required
+          maxLength={190}
+          value={subject}
+          onChange={(event) => setSubject(event.target.value)}
+        />
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={confirmed}
+          onChange={(event) => setConfirmed(event.target.checked)}
+        />{" "}
+        I verified that this website account belongs to this person.
+      </label>
+      <button className="btn secondary" disabled={busy || !confirmed || !subject.trim()}>
+        Link website account
+      </button>
+    </form>
   );
 }
 function AccountHistory({ user }: { user: User }) {

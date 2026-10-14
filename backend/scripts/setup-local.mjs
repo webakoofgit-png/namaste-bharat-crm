@@ -3,7 +3,8 @@ import { randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
 const schema = readFileSync("prisma/schema.prisma", "utf8")
   .replace('provider = "mysql"', 'provider = "sqlite"')
-  .replaceAll(" @db.Text", "");
+  .replaceAll(" @db.Text", "")
+  .replaceAll(" @db.VarChar(190)", "");
 writeFileSync("prisma/schema.local.prisma", schema);
 if (!existsSync(".env"))
   writeFileSync(
