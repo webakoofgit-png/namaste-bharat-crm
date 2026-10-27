@@ -6,28 +6,49 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import type { User, Customer } from "@/lib/crm-types";
 import { Loading, ErrorState } from "./primitives";
+
+// prettier-ignore
+const cardContact = {
+  website: import.meta.env["VITE_CARD_WEBSITE_URL"] || "https://namastebharat24.com",
+  support: import.meta.env["VITE_CARD_SUPPORT_PHONE"] || "8459608568",
+  facebook: import.meta.env["VITE_CARD_FACEBOOK_URL"] || "https://www.facebook.com/share/1Dfr1GQSYf/",
+  instagram: import.meta.env["VITE_CARD_INSTAGRAM_URL"] || "https://www.instagram.com/namasteybharat24?obrf=MXhyOXVwejYyZnJ3Zw==",
+};
+function safeLink(value: string) {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function MembershipCard({
   customer,
   name,
   active,
+  city,
 }: {
   customer: Customer;
   name: string;
   active: boolean;
+  city: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   // Opaque identity only: no name, email, phone or user ID is in the QR payload.
   const payload = `nb24:card:${customer.cardToken || ""}`;
   async function download() {
     const bytes = new Uint8Array(await (await fetch("/brand-logo.png")).arrayBuffer());
-    const logo = `data:image/jpeg;base64,${btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(""))}`;
+    const logo = `data:image/png;base64,${btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(""))}`;
     const qr = ref.current?.querySelector("svg")?.outerHTML || "";
     const escape = (v: string) =>
       v.replace(
         /[<>&"']/g,
         (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" })[c]!,
       );
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="860" height="500"><rect width="860" height="500" rx="32" fill="#183d35"/><image href="${logo}" x="60" y="40" width="56" height="56"/><text x="135" y="80" font-family="sans-serif" font-size="30" fill="#fff">NAMASTE BHARAT 24</text><text x="60" y="145" font-family="sans-serif" font-size="18" fill="#abc5bc">MEMBERSHIP CARD</text><text x="60" y="295" font-family="sans-serif" font-size="32" fill="#fff">${escape(name)}</text><text x="60" y="345" font-family="monospace" font-size="26" fill="#edb277">${escape(customer.reference)}</text><text x="60" y="430" font-family="sans-serif" font-size="18" fill="#abc5bc">${active ? "Active member" : "Inactive member"}</text><g transform="translate(620 205)">${qr}</g></svg>`;
+    const line = (value: string, x: number, y: number, size: number, width = 700) =>
+      `<text x="${x}" y="${y}" font-family="sans-serif" font-size="${size}" fill="#fff"${value.length * size * 0.62 > width ? ` textLength="${width}" lengthAdjust="spacingAndGlyphs"` : ""}>${escape(value)}</text>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="860" height="542" viewBox="0 0 860 542"><defs><linearGradient id="red" x2="1" y2="1"><stop stop-color="#cd263e"/><stop offset="1" stop-color="#710f26"/></linearGradient></defs><rect width="860" height="542" rx="32" fill="url(#red)"/><circle cx="830" cy="40" r="170" fill="none" stroke="#ffffff" stroke-opacity=".08" stroke-width="45"/><image href="${logo}" x="40" y="32" width="48" height="48"/>${line("NAMASTE BHARAT 24", 105, 65, 27)}${line("MEMBERSHIP CARD", 40, 108, 14)}<rect x="40" y="134" width="65" height="45" rx="9" fill="#ebcd8e"/><path d="M40 156h65M62 134v45M83 134v45" stroke="#9b793d"/>${line("REFERENCE NUMBER", 40, 217, 13)}${line(customer.reference, 40, 253, 30, 525)}${line("MEMBER NAME", 40, 292, 12)}${line(name, 40, 322, 25, 525)}${line(`CITY: ${city.trim() || "Update city in My profile"}`, 40, 355, 17, 525)}<g transform="translate(665 200)">${qr}</g>${line(active ? "Active member" : "Inactive membership", 40, 395, 14)}<path d="M40 414h780" stroke="#ffffff" stroke-opacity=".25"/>${line(cardContact.website, 40, 443, 15)}${line(`Support: ${cardContact.support || "Contact details pending"}`, 40, 470, 14)}${line(`Facebook: ${cardContact.facebook || "Link pending"}`, 40, 496, 13)}${line(`Instagram: ${cardContact.instagram || "Link pending"}`, 40, 520, 13)}</svg>`;
     const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
     const a = document.createElement("a");
     a.href = url;
@@ -45,12 +66,17 @@ export function MembershipCard({
           </strong>
         </div>
         <span className="card-label">YOUR MEMBERSHIP. YOUR POSSIBILITIES.</span>
+        <div className="card-chip" aria-hidden="true">
+          <i />
+          <i />
+        </div>
         <div className="card-body">
           <div>
+            <small>REFERENCE NUMBER</small>
+            <strong className="card-reference">{customer.reference}</strong>
             <small>MEMBER NAME</small>
             <h3>{name}</h3>
-            <small>MEMBERSHIP NUMBER</small>
-            <strong className="card-reference">{customer.reference}</strong>
+            <span className="card-city">City: {city.trim() || "Update city in My profile"}</span>
           </div>
           <div className="qr-box">
             <QRCodeSVG value={payload} size={132} marginSize={2} level="M" />
@@ -61,8 +87,39 @@ export function MembershipCard({
             <ShieldCheck size={15} />
             {active ? "Active member" : "Inactive membership"}
           </span>
-          <small>Namaste Bharat 24</small>
+          <small>MEMBERSHIP CARD</small>
         </footer>
+        <div className="card-contact">
+          <a href={safeLink(cardContact.website)} target="_blank" rel="noopener noreferrer">
+            {cardContact.website.replace(/^https?:\/\//, "")}
+          </a>
+          <span>
+            Support:{" "}
+            {cardContact.support ? (
+              <a href={`tel:${cardContact.support.replace(/[^+\d]/g, "")}`}>
+                {cardContact.support}
+              </a>
+            ) : (
+              "Contact details pending"
+            )}
+          </span>
+          <div className="card-socials">
+            {(
+              [
+                ["Facebook", cardContact.facebook],
+                ["Instagram", cardContact.instagram],
+              ] as const
+            ).map(([label, url]) =>
+              safeLink(url) ? (
+                <a key={label} href={safeLink(url)} target="_blank" rel="noopener noreferrer">
+                  {label} ↗
+                </a>
+              ) : (
+                <span key={label}>{label}: link pending</span>
+              ),
+            )}
+          </div>
+        </div>
       </div>
       <div className="card-actions">
         <button
@@ -106,6 +163,7 @@ export function MembershipPage() {
           customer={query.data.customer}
           name={query.data.name}
           active={query.data.active}
+          city={query.data.city}
         />
       )}
       <p className="data-note">

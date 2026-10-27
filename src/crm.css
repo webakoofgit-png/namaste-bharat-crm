@@ -1334,18 +1334,18 @@ td small {
   background: #fafbf7;
 }
 .membership-wrap {
-  max-width: 560px;
+  max-width: 680px;
   margin: auto;
 }
 .membership-card {
-  background: #254c3f;
+  background: linear-gradient(125deg, #cd263e 0%, #a21a32 52%, #710f26 100%);
   border-radius: 15px;
   color: #fff;
   padding: 28px 31px;
   position: relative;
   overflow: hidden;
-  border: 1px solid #406153;
-  box-shadow: 0 10px 20px #24412915;
+  border: 1px solid #db596d;
+  box-shadow: 0 16px 32px #710f2626;
 }
 .membership-card:before {
   content: "";
@@ -1382,8 +1382,65 @@ td small {
   display: block;
   font-size: 11px;
   letter-spacing: 1.7px;
-  color: #a8bda7;
-  margin: 16px 0 30px;
+  color: #ffe0e5;
+  margin: 12px 0 16px;
+}
+.card-chip {
+  width: 46px;
+  height: 32px;
+  border-radius: 7px;
+  border: 1px solid #b59050;
+  background: linear-gradient(135deg, #f8e3ad, #ceaa63);
+  display: flex;
+  justify-content: space-evenly;
+  margin-bottom: 18px;
+  position: relative;
+}
+.card-chip::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 100%;
+  border-top: 1px solid #a48145;
+}
+.card-chip i {
+  border-left: 1px solid #a48145;
+}
+.card-body > div:first-child {
+  min-width: 0;
+}
+.card-city {
+  display: block;
+  font-size: 12px;
+  color: #ffe0e5;
+  overflow-wrap: anywhere;
+}
+.card-contact {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #ffffff40;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  font-size: 12px;
+  color: #ffe0e5;
+  position: relative;
+  overflow-wrap: anywhere;
+}
+.card-contact a {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.card-contact a:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 3px;
+}
+.card-socials {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
 }
 .card-body {
   display: flex;
@@ -1393,23 +1450,25 @@ td small {
 }
 .card-body small {
   display: block;
-  color: #9fbaa5;
+  color: #ffe0e5;
   font-size: 11px;
   letter-spacing: 1.5px;
 }
 .card-body h3 {
   font-size: 22px;
-  margin: 8px 0 25px;
+  margin: 6px 0 10px;
   max-width: 280px;
   overflow-wrap: anywhere;
   color: #fff;
 }
 .card-reference {
-  font-size: 18px;
+  font-size: 24px;
   font-family: monospace;
-  color: #efbd80;
+  color: #ffe2aa;
   display: block;
-  margin-top: 8px;
+  margin: 6px 0 18px;
+  letter-spacing: 2px;
+  overflow-wrap: anywhere;
 }
 .qr-box {
   background: #fff;
@@ -1422,8 +1481,8 @@ td small {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 28px;
-  color: #b4c5ac;
+  padding-top: 18px;
+  color: #ffe0e5;
   font-size: 12px;
 }
 .membership-card footer span {

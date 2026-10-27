@@ -337,7 +337,12 @@ export function Accounts({ kind }: { kind: "CUSTOMER" | "VENDOR" }) {
             </p>
           </div>
           {view.customer && (
-            <MembershipCard customer={view.customer} name={view.name} active={view.active} />
+            <MembershipCard
+              customer={view.customer}
+              name={view.name}
+              active={view.active}
+              city={view.city}
+            />
           )}
           <div className="form-footer">
             {view.vendor && (
